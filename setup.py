@@ -8,7 +8,7 @@ if __version__ is None:
 
 if __name__ == '__main__':
     setup(
-        name="mongodm",
+        name="python-mongodm",
         version=__version__,
         author="Ferréol Jeannot-Lorente",
         description="Asynchronous Python ODM for MongoDB based on Motor",
