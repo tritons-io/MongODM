@@ -13,6 +13,7 @@ if __name__ == '__main__':
         author="Ferréol Jeannot-Lorente",
         description="Asynchronous Python ODM for MongoDB based on Motor",
         packages=find_packages(where='./src'),
+        readme="README.md",
         classifiers=[
             "Programming Language :: Python :: 3",
             "License :: OSI Approved :: MIT License",
@@ -20,5 +21,9 @@ if __name__ == '__main__':
         ],
         python_requires='>=3.6',
         package_dir={'': 'src'},
-        install_requires=['pydantic==1.10.2', "typing-extensions==4.3.0; python_version >= '3.7'"]
+        install_requires=['pydantic==1.10.2', "typing-extensions==4.3.0; python_version >= '3.7'"],
+        project_urls={
+            "Homepage": "https://github.com/tritons-io/MongODM",
+            "Bug Tracker": "https://github.com/tritons-io/MongODM/issues"
+        }
     )

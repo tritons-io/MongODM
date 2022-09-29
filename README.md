@@ -74,6 +74,7 @@ class Entity(MyBase):
 ## Contributing
 
 Contributions are welcome! Please open an issue or a pull request.
+We are looking for reviews and feedback on the basic design of the library.
 
 ## License
 
