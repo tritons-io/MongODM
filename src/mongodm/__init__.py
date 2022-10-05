@@ -102,7 +102,7 @@ class MongoODMBase(MongODMBaseModel):
         return self.replace_str_with_object_id(self.dict(by_alias=True, exclude=to_exclude))
 
     async def _create(self):
-        req = await self.config['database_connection'][config['database_name']][self.__collection_name__].insert_one(
+        req = await config['database_connection'][config['database_name']][self.__collection_name__].insert_one(
             self._get_dict_with_oid(creation=True)
         )
         self.id = ObjectIdStr(req.inserted_id)
@@ -111,7 +111,7 @@ class MongoODMBase(MongODMBaseModel):
     @classmethod
     async def get_by_id(cls, item_id):  # -> Self
         try:
-            item = await cls.config['database_connection'][config['database_name']][cls.__collection_name__].find_one(cls._get_fetch_filter({"_id": ObjectId(item_id)}))
+            item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(cls._get_fetch_filter({"_id": ObjectId(item_id)}))
         except bson.errors.InvalidId:
             raise InvalidSelection
         if item:
@@ -122,7 +122,7 @@ class MongoODMBase(MongODMBaseModel):
     async def get_by_fields(cls, **kwargs):  # -> Self
         fields = cls.replace_str_with_object_id(kwargs)
         try:
-            item = await cls.config['database_connection'][config['database_name']][cls.__collection_name__].find_one(cls._get_fetch_filter(fields))
+            item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(cls._get_fetch_filter(fields))
         except bson.errors.InvalidId:
             raise InvalidSelection
         if item:
@@ -133,7 +133,7 @@ class MongoODMBase(MongODMBaseModel):
     async def get_with_selector(cls, selector):  # -> Self
         mongo_selector = cls.replace_str_with_object_id(selector)
         try:
-            item = await cls.config['database_connection'][config['database_name']][cls.__collection_name__].find_one(cls._get_fetch_filter(mongo_selector))
+            item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(cls._get_fetch_filter(mongo_selector))
         except bson.errors.InvalidId:
             raise InvalidSelection
         if item:
@@ -145,7 +145,7 @@ class MongoODMBase(MongODMBaseModel):
         if selector_z is None:
             selector_z = kwargs
         selector_z = cls.replace_str_with_object_id(selector_z)
-        items = await cls.config['database_connection'][config['database_name']][cls.__collection_name__].find(cls._get_fetch_filter(selector_z)).skip((page - 1) * per_page).limit(
+        items = await config['database_connection'][config['database_name']][cls.__collection_name__].find(cls._get_fetch_filter(selector_z)).skip((page - 1) * per_page).limit(
             per_page).to_list(length=None)
 
         return [cls(**item) for item in items]
@@ -156,7 +156,7 @@ class MongoODMBase(MongODMBaseModel):
         payload = self._get_dict_with_oid(exclude=True)
         if not skip_update_at:
             payload['updated_at'] = datetime.now()
-        await self.config['database_connection'][config['database_name']][self.__collection_name__].update_one(
+        await config['database_connection'][config['database_name']][self.__collection_name__].update_one(
             self.__class__._get_fetch_filter({"_id": ObjectId(self.id)}),
             {'$set': payload}
         )
@@ -169,11 +169,11 @@ class MongoODMBase(MongODMBaseModel):
             await self._hard_delete()
 
     async def _soft_delete(self):
-        await self.config['database_connection'][config['database_name']][self.__collection_name__].update_one(
+        await config['database_connection'][config['database_name']][self.__collection_name__].update_one(
             self.__class__._get_fetch_filter({"_id": ObjectId(self.id)}),
             {'$set': {'deleted_at': datetime.now()}}
         )
 
     async def _hard_delete(self):
-        await self.config['database_connection'][config['database_name']][self.__collection_name__].delete_one({"_id": ObjectId(self.id)})
+        await config['database_connection'][config['database_name']][self.__collection_name__].delete_one({"_id": ObjectId(self.id)})
 
