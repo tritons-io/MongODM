@@ -43,7 +43,7 @@ sonarqube-check:
   before_script:
   - pip install twine
   script:
-  - twine upload --repository-url https://pypi.org/simple/ --username $PYPI_USERNAME --password $PYPI_PASSWORD dist/*
+  - twine upload --repository-url https://upload.pypi.org/legacy/ --username $PYPI_USERNAME --password $PYPI_PASSWORD dist/*
   only:
   - tags
 
