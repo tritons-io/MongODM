@@ -122,6 +122,7 @@ class MongoODMBase(MongODMBaseModel):
         )
 
     async def before_create(self):
+        """ Before create hook """
         pass
 
     async def _create(self):
@@ -137,6 +138,7 @@ class MongoODMBase(MongODMBaseModel):
         return self
 
     async def after_create(self):
+        """ After create hook """
         pass
 
     async def after_find(self):
@@ -220,6 +222,7 @@ class MongoODMBase(MongODMBaseModel):
             setattr(self, key, value)
 
     async def before_save(self):
+        """ Before save hook """
         pass
 
     async def before_update(self, payload):
@@ -241,12 +244,15 @@ class MongoODMBase(MongODMBaseModel):
         return self
 
     async def after_update(self):
+        """ After update hook """
         pass
 
     async def after_save(self):
+        """ After save hook """
         pass
 
     async def before_delete(self):
+        """ Before delete hook """
         pass
 
     async def delete(self):
@@ -258,6 +264,7 @@ class MongoODMBase(MongODMBaseModel):
         await self.after_delete()
 
     async def after_delete(self):
+        """ After delete hook """
         pass
 
     async def _soft_delete(self):
@@ -268,6 +275,7 @@ class MongoODMBase(MongODMBaseModel):
         await self.after_soft_delete()
 
     async def after_soft_delete(self):
+        """ After soft delete hook """
         pass
 
     async def _hard_delete(self):
@@ -277,4 +285,5 @@ class MongoODMBase(MongODMBaseModel):
         await self.after_hard_delete()
 
     async def after_hard_delete(self):
+        """ After hard delete hook """
         pass
