@@ -12,6 +12,8 @@ if __name__ == '__main__':
         version=__version__,
         author="Ferréol Jeannot-Lorente",
         description="Asynchronous Python ODM for MongoDB based on Motor",
+        long_description=open('README.md').read(),
+        long_description_content_type='text/markdown',
         packages=find_packages(where='./src'),
         readme="README.md",
         classifiers=[
