@@ -6,7 +6,6 @@ name = "pypi"
 [packages]
 pydantic = "*"
 motor = "*"
-bson = "*"
 
 [dev-packages]
 

@@ -1,5 +1,8 @@
 from datetime import datetime, timezone
-from typing import Optional, Union
+from typing import Optional
+from uuid import uuid4
+import logging
+
 from motor.motor_asyncio import AsyncIOMotorClient
 
 import bson.errors
@@ -10,9 +13,12 @@ from mongodm.types import ObjectIdStr
 from mongodm.errors import InvalidSelection, NotFound, AbstractUsage
 
 
+logger = logging.getLogger('mongodm')
+
+
 config = {
-    'database_connection': None,
-    'database_name': None,
+    'database_connection': AsyncIOMotorClient(),
+    'database_name': 'database',
     'soft_delete': False
 }
 
@@ -30,7 +36,6 @@ class MongODMBaseModel(BaseModel):
     class Config(BaseConfig):
         allow_population_by_alias = True
         arbitrary_types_allowed = True
-        strict_mode = False
         json_encoders = {
             datetime: lambda dt: dt.replace(tzinfo=timezone.utc)
             .isoformat()
@@ -42,10 +47,11 @@ class MongODMBaseModel(BaseModel):
 class MongoODMBase(MongODMBaseModel):
     """
     Usage:
-    >>> set_config(AsyncIOMotorClient(), 'my-database')
+    >>> import mongodm
+    >>> mongodm.set_config(AsyncIOMotorClient('mongodb://localhost:27017'), 'test')
     >>>
-    >>> class Entity(MongoODMBase):
-    >>>     __collection_name__ = 'demo_item'
+    >>> class Entity(mongodm.MongoODMBase):
+    >>>     __collection_name__ = 'my_entity'
     >>>     __protected_attributes__ = {'protected'}  # Writable on first creation, but not on updates
     >>>
     >>>     title: str
@@ -53,19 +59,28 @@ class MongoODMBase(MongODMBaseModel):
     >>>     protected: str
     >>>
     >>> item = Entity(title='title', description='description')
-    >>> await item.save()  # Send to DB
+    >>> await item.save()  # Commit in DB
     >>> db_items = await Entity.get_all()  # List of instances from db
     >>> db_items[0].title = 'modification'
     >>> await db_items[0].save()
     >>> await db_items[0].delete()
+    >>>
+    >>> update_dict = {'title': 'edited','description': 'edited'}
+    >>> item.set_attributes(**update_dict)  # To change multiples attributes simultaneously, pydantic constructor style
     """
-    id: Optional[ObjectIdStr] = Field(alias="_id", default=None)
+
+    id: Optional[str] = Field(alias="_id")
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
 
-
+    __soft_delete__ = config["soft_delete"]
     __protected_attributes__: set = set()
+    __id_marshaller__ = str
+    __id_constructor__ = uuid4
+
+    def __id_factory__(self):
+        return MongoODMBase.__id_marshaller__(MongoODMBase.__id_constructor__())
 
     @property
     def __collection_name__(self):
@@ -80,100 +95,186 @@ class MongoODMBase(MongODMBaseModel):
     @classmethod
     def replace_str_with_object_id(cls, item):
         if type(item) in [bytes, str, ObjectId, ObjectIdStr]:
-            item = cls.cast_to_object_id(item)
-        if isinstance(item, list):
-            item = [cls.replace_str_with_object_id(i) for i in item]
-        if isinstance(item, dict):
-            item = {k: cls.replace_str_with_object_id(v) for k, v in item.items()}
+            return cls.cast_to_object_id(item)
+
+        if type(item) in [list, dict]:
+            for key in item.keys():
+                if isinstance(item[key], list):
+                    item[key] = [cls.replace_str_with_object_id(i) for i in item[key]]
+                if isinstance(item[key], dict):
+                    item[key] = cls.replace_str_with_object_id(item[key])
         return item
 
     @classmethod
     def _get_fetch_filter(cls, selector):
-        if not config['soft_delete']:
-            selector['deleted_at'] = None
+        if not cls.__soft_delete__:
+            selector["deleted_at"] = None
         return selector
 
     def _get_dict_with_oid(self, exclude=False, creation=False):
-        to_exclude = {'id', 'updated_at', 'deleted_at'}
+        to_exclude = {"updated_at", "deleted_at"}
         if not creation:
-            to_exclude.add('created_at')
+            to_exclude.add("created_at")
         if exclude:
             to_exclude = to_exclude.union(self.__protected_attributes__)
-        return self.replace_str_with_object_id(self.dict(by_alias=True, exclude=to_exclude))
+        return self.replace_str_with_object_id(
+            self.dict(by_alias=True, exclude=to_exclude)
+        )
+
+    async def before_create(self):
+        pass
 
     async def _create(self):
-        req = await config['database_connection'][config['database_name']][self.__collection_name__].insert_one(
+        await self.before_create()
+        self.id = self.__id_factory__()
+        await self.before_save()
+        await config['database_connection'][config['database_name']][self.__collection_name__].insert_one(
             self._get_dict_with_oid(creation=True)
         )
-        self.id = ObjectIdStr(req.inserted_id)
+        await self.after_save()
+        logger.debug(f"Created {self.__collection_name__} with id {self.id}")
+        await self.after_create()
         return self
+
+    async def after_create(self):
+        pass
+
+    async def after_find(self):
+        """
+        This hook is called after EVERY method that returns a single instance of the model and for every instance that
+        is returned by a method that returns a list of instances.
+        """
+        pass
 
     @classmethod
     async def get_by_id(cls, item_id):  # -> Self
         try:
-            item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(cls._get_fetch_filter({"_id": ObjectId(item_id)}))
+            item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(
+                cls._get_fetch_filter({"_id": item_id})
+            )
         except bson.errors.InvalidId:
             raise InvalidSelection
         if item:
-            return cls(**item)
+            e = cls(**item)
+            await e.after_find()
+            return e
         raise NotFound
 
     @classmethod
     async def get_by_fields(cls, **kwargs):  # -> Self
         fields = cls.replace_str_with_object_id(kwargs)
         try:
-            item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(cls._get_fetch_filter(fields))
+            item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(
+                cls._get_fetch_filter(fields)
+            )
         except bson.errors.InvalidId:
             raise InvalidSelection
         if item:
-            return cls(**item)
+            e = cls(**item)
+            await e.after_find()
+            return e
         raise NotFound
 
     @classmethod
     async def get_with_selector(cls, selector):  # -> Self
         mongo_selector = cls.replace_str_with_object_id(selector)
         try:
-            item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(cls._get_fetch_filter(mongo_selector))
+            item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(
+                cls._get_fetch_filter(mongo_selector)
+            )
         except bson.errors.InvalidId:
             raise InvalidSelection
         if item:
-            return cls(**item)
+            e = cls(**item)
+            await e.after_find()
+            return e
         raise NotFound
 
+    def after_get_many_hook(self):
+        self.after_find()
+        return self
+
     @classmethod
-    async def get_all(cls, page: int = 1, per_page: int = 20, selector_z: dict = None, **kwargs) -> list:  # -> List[Self]
+    async def get_all(
+        cls,
+        page: int = 1,
+        per_page: int = 20,
+        selector_z: dict = None,
+        **kwargs,
+    ) -> list:  # -> List[Self]
         if selector_z is None:
             selector_z = kwargs
         selector_z = cls.replace_str_with_object_id(selector_z)
-        items = await config['database_connection'][config['database_name']][cls.__collection_name__].find(cls._get_fetch_filter(selector_z)).skip((page - 1) * per_page).limit(
-            per_page).to_list(length=None)
+        items = (
+            await config['database_connection'][config['database_name']][cls.__collection_name__]
+            .find(cls._get_fetch_filter(selector_z))
+            .skip((page - 1) * per_page)
+            .limit(per_page)
+            .to_list(length=None)
+        )
 
-        return [cls(**item) for item in items]
+        return [cls(**item).after_get_many_hook() for item in items]
 
-    async def save(self, skip_update_at: bool = False):  # -> Self
+    def set_attributes(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    async def before_save(self):
+        pass
+
+    async def before_update(self, payload):
+        return payload
+
+    async def save(self):  # -> Self
         if self.id is None:
             return await self._create()
+        await self.before_save()
+        self.updated_at = datetime.now()
         payload = self._get_dict_with_oid(exclude=True)
-        if not skip_update_at:
-            payload['updated_at'] = datetime.now()
+        payload = await self.before_update(payload)
         await config['database_connection'][config['database_name']][self.__collection_name__].update_one(
-            self.__class__._get_fetch_filter({"_id": ObjectId(self.id)}),
-            {'$set': payload}
+            self.__class__._get_fetch_filter({"_id": self.__id_marshaller__(self.id)}),
+            {"$set": payload},
         )
+        await self.after_update()
+        await self.after_save()
         return self
 
+    async def after_update(self):
+        pass
+
+    async def after_save(self):
+        pass
+
+    async def before_delete(self):
+        pass
+
     async def delete(self):
-        if config['soft_delete']:
+        await self.before_delete()
+        if self.__soft_delete__:
             await self._soft_delete()
         else:
             await self._hard_delete()
+        await self.after_delete()
+
+    async def after_delete(self):
+        pass
 
     async def _soft_delete(self):
         await config['database_connection'][config['database_name']][self.__collection_name__].update_one(
-            self.__class__._get_fetch_filter({"_id": ObjectId(self.id)}),
-            {'$set': {'deleted_at': datetime.now()}}
+            self.__class__._get_fetch_filter({"_id": self.__id_marshaller__(self.id)}),
+            {"$set": {"deleted_at": datetime.now()}},
         )
+        await self.after_soft_delete()
+
+    async def after_soft_delete(self):
+        pass
 
     async def _hard_delete(self):
-        await config['database_connection'][config['database_name']][self.__collection_name__].delete_one({"_id": ObjectId(self.id)})
+        await config['database_connection'][config['database_name']][self.__collection_name__].delete_one(
+            {"_id": self.__id_marshaller__(self.id)}
+        )
+        await self.after_hard_delete()
 
+    async def after_hard_delete(self):
+        pass
