@@ -207,13 +207,11 @@ class MongoODMBase(MongODMBaseModel):
         if selector_z is None:
             selector_z = kwargs
         selector_z = cls.replace_str_with_object_id(selector_z)
-        items = (
-            await config['database_connection'][config['database_name']][cls.__collection_name__]
-            .find(cls._get_fetch_filter(selector_z))
-            .skip((page - 1) * per_page)
-            .limit(per_page)
+        items = await config['database_connection'][config['database_name']][cls.__collection_name__]\
+            .find(cls._get_fetch_filter(selector_z))\
+            .skip((page - 1) * per_page)\
+            .limit(per_page)\
             .to_list(length=None)
-        )
 
         return [cls(**item).after_get_many_hook() for item in items]
 
