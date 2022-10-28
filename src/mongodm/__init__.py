@@ -201,14 +201,14 @@ class MongoODMBase(MongODMBaseModel):
         cls,
         page: int = 1,
         per_page: int = 20,
-        selector_z: dict = None,
+        selector: dict = None,
         **kwargs,
     ) -> list:  # -> List[Self]
-        if selector_z is None:
-            selector_z = kwargs
-        selector_z = cls.replace_str_with_object_id(selector_z)
+        if selector is None:
+            selector = kwargs
+        selector = cls.replace_str_with_object_id(selector)
         items = await config['database_connection'][config['database_name']][cls.__collection_name__]\
-            .find(cls._get_fetch_filter(selector_z))\
+            .find(cls._get_fetch_filter(selector))\
             .skip((page - 1) * per_page)\
             .limit(per_page)\
             .to_list(length=None)
