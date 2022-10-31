@@ -192,8 +192,8 @@ class MongoODMBase(MongODMBaseModel):
             return e
         raise NotFound
 
-    def after_get_many_hook(self):
-        self.after_find()
+    async def after_get_many_hook(self):
+        await self.after_find()
         return self
 
     @classmethod
@@ -213,7 +213,7 @@ class MongoODMBase(MongODMBaseModel):
             .limit(per_page)\
             .to_list(length=None)
 
-        return [cls(**item).after_get_many_hook() for item in items]
+        return [await cls(**item).after_get_many_hook() for item in items]
 
     def set_attributes(self, **kwargs):
         for key, value in kwargs.items():
