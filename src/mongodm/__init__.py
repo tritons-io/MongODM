@@ -118,7 +118,7 @@ class MongoODMBase(MongODMBaseModel):
         if exclude:
             to_exclude = to_exclude.union(self.__protected_attributes__)
         return self.replace_str_with_object_id(
-            self.dict(by_alias=True, exclude=to_exclude)
+            self.dict(by_alias=True, exclude=to_exclude, exclude_none=True, exclude_unset=True)
         )
 
     async def before_create(self):
