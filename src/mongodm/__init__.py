@@ -111,14 +111,14 @@ class MongoODMBase(MongODMBaseModel):
             selector["deleted_at"] = None
         return selector
 
-    def _get_dict_with_oid(self, exclude=False, creation=False):
+    def _get_dict_with_oid(self, exclude=False, creation=False, exclude_none=False, exclude_unset=False):
         to_exclude = {"updated_at", "deleted_at"}
         if not creation:
             to_exclude.add("created_at")
         if exclude:
             to_exclude = to_exclude.union(self.__protected_attributes__)
         return self.replace_str_with_object_id(
-            self.dict(by_alias=True, exclude=to_exclude, exclude_none=True, exclude_unset=True)
+            self.dict(by_alias=True, exclude=to_exclude, exclude_none=exclude_none, exclude_unset=exclude_unset)
         )
 
     async def before_create(self):
@@ -197,6 +197,15 @@ class MongoODMBase(MongODMBaseModel):
         return self
 
     @classmethod
+    async def count(cls, selector: dict = None, **kwargs):
+        if selector is None:
+            selector = kwargs
+        mongo_selector = cls.replace_str_with_object_id(selector)
+        return await config['database_connection'][config['database_name']][cls.__collection_name__].count_documents(
+            cls._get_fetch_filter(mongo_selector)
+        )
+
+    @classmethod
     async def get_all(
         cls,
         page: int = 1,
@@ -226,12 +235,12 @@ class MongoODMBase(MongODMBaseModel):
     async def before_update(self, payload):
         return payload
 
-    async def save(self):  # -> Self
+    async def save(self, exclude_none=False, exclude_unset=False):  # -> Self
         if self.id is None:
             return await self._create()
         await self.before_save()
         self.updated_at = datetime.now()
-        payload = self._get_dict_with_oid(exclude=True)
+        payload = self._get_dict_with_oid(exclude=True, exclude_none=exclude_none, exclude_unset=exclude_unset)
         payload = await self.before_update(payload)
         await config['database_connection'][config['database_name']][self.__collection_name__].update_one(
             self.__class__._get_fetch_filter({"_id": self.__id_marshaller__(self.id)}),
