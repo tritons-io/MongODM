@@ -34,6 +34,7 @@ def set_config(database_connection: AsyncIOMotorClient, database_name: str, soft
 class MongODMBaseModel(BaseModel):
 
     class Config(BaseConfig):
+        use_enum_values = True
         allow_population_by_field_name = True
         arbitrary_types_allowed = True
         json_encoders = {
