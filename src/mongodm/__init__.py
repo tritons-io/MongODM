@@ -237,17 +237,21 @@ class MongoODMBase(MongODMBaseModel):
         return payload
 
     async def save(self, exclude_none=False, exclude_unset=False):  # -> Self
+        create = False
         if self.id is None:
+            create = True
             return await self._create()
         await self.before_save()
         self.updated_at = datetime.now()
         payload = self._get_dict_with_oid(exclude=True, exclude_none=exclude_none, exclude_unset=exclude_unset)
-        payload = await self.before_update(payload)
+        if not create:
+            payload = await self.before_update(payload)
         await config['database_connection'][config['database_name']][self.__collection_name__].update_one(
             self.__class__._get_fetch_filter({"_id": self.__id_marshaller__(self.id)}),
             {"$set": payload},
         )
-        await self.after_update()
+        if not create:
+            await self.after_update()
         await self.after_save()
         return self
 
