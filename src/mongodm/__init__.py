@@ -3,6 +3,7 @@ from typing import Optional
 from uuid import uuid4
 import logging
 
+import pymongo
 from motor.motor_asyncio import AsyncIOMotorClient
 
 import bson.errors
@@ -212,13 +213,17 @@ class MongoODMBase(MongODMBaseModel):
         page: int = 1,
         per_page: int = 20,
         selector: dict = None,
+        sort: dict = None,
         **kwargs,
     ) -> list:  # -> List[Self]
         if selector is None:
             selector = kwargs
+        if sort is None:
+            sort = [("created_at", pymongo.DESCENDING)]
         selector = cls.replace_str_with_object_id(selector)
         items = await config['database_connection'][config['database_name']][cls.__collection_name__]\
             .find(cls._get_fetch_filter(selector))\
+            .sort(sort)\
             .skip((page - 1) * per_page)\
             .limit(per_page)\
             .to_list(length=None)
