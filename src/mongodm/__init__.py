@@ -151,10 +151,14 @@ class MongoODMBase(MongODMBaseModel):
         pass
 
     @classmethod
-    async def get_by_id(cls, item_id):  # -> Self
+    async def get_by_id(cls,
+        item_id,
+        projection: dict = None
+    ):  # -> Self
         try:
             item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(
-                cls._get_fetch_filter({"_id": item_id})
+                cls._get_fetch_filter({"_id": item_id}),
+                projection=projection
             )
         except bson.errors.InvalidId:
             raise InvalidSelection
@@ -165,11 +169,16 @@ class MongoODMBase(MongODMBaseModel):
         raise NotFound
 
     @classmethod
-    async def get_by_fields(cls, **kwargs):  # -> Self
+    async def get_by_fields(
+        cls,
+        projection: dict = None,
+        **kwargs
+    ):  # -> Self
         fields = cls.replace_str_with_object_id(kwargs)
         try:
             item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(
-                cls._get_fetch_filter(fields)
+                cls._get_fetch_filter(fields),
+                projection=projection
             )
         except bson.errors.InvalidId:
             raise InvalidSelection
@@ -180,11 +189,16 @@ class MongoODMBase(MongODMBaseModel):
         raise NotFound
 
     @classmethod
-    async def get_with_selector(cls, selector):  # -> Self
+    async def get_with_selector(
+        cls,
+        selector,
+        projection: dict = None
+    ):  # -> Self
         mongo_selector = cls.replace_str_with_object_id(selector)
         try:
             item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(
-                cls._get_fetch_filter(mongo_selector)
+                cls._get_fetch_filter(mongo_selector),
+                projection=projection
             )
         except bson.errors.InvalidId:
             raise InvalidSelection
@@ -213,6 +227,7 @@ class MongoODMBase(MongODMBaseModel):
         page: int = 1,
         per_page: int = 20,
         selector: dict = None,
+        projection: dict = None,
         sort: dict = None,
         **kwargs,
     ) -> list:  # -> List[Self]
@@ -222,7 +237,7 @@ class MongoODMBase(MongODMBaseModel):
             sort = [("created_at", pymongo.DESCENDING)]
         selector = cls.replace_str_with_object_id(selector)
         items = await config['database_connection'][config['database_name']][cls.__collection_name__]\
-            .find(cls._get_fetch_filter(selector))\
+            .find(cls._get_fetch_filter(selector), projection=projection)\
             .sort(sort)\
             .skip((page - 1) * per_page)\
             .limit(per_page)\
