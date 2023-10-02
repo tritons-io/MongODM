@@ -262,8 +262,9 @@ class MongoODMBase(MongODMBaseModel):
             create = True
             return await self._create()
         await self.before_save()
-        self.updated_at = datetime.now()
         payload = self._get_dict_with_oid(exclude=True, exclude_none=exclude_none, exclude_unset=exclude_unset)
+        update_timestamp = datetime.now()
+        self.updated_at = payload['updated_at'] = update_timestamp
         if not create:
             payload = await self.before_update(payload)
         await config['database_connection'][config['database_name']][self.__collection_name__].update_one(
