@@ -1,3 +1,5 @@
+import logging
+import traceback
 from typing import Annotated
 
 import pydantic
@@ -42,11 +44,15 @@ class EncryptedStr(str):
     def encrypt(self, public_key):
         try:
             return rsa.encrypt(self.encode('utf-8'), public_key)
-        except (AttributeError, rsa.pkcs1.CryptoError):
+        except (AttributeError, rsa.pkcs1.CryptoError) as e:
+            logging.error(e)
+            logging.error(traceback.format_exc())
             raise RSAError()
 
     def decrypt(self, private_key):
         try:
             return rsa.decrypt(self.encode('utf-8'), private_key).decode('utf-8')
-        except (AttributeError, rsa.pkcs1.CryptoError):
+        except (AttributeError, rsa.pkcs1.CryptoError) as e:
+            logging.error(e)
+            logging.error(traceback.format_exc())
             raise RSAError()
