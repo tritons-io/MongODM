@@ -1,3 +1,6 @@
+from typing import Annotated
+
+import pydantic
 from bson import ObjectId, errors
 import rsa
 
@@ -28,6 +31,13 @@ class ObjectIdStr(str):
 
 
 class EncryptedStr(str):
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        return EncryptedStr(v)
 
     def encrypt(self, public_key):
         try:
