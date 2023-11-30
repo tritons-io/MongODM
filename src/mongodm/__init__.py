@@ -124,30 +124,33 @@ class MongoODMBase(MongODMBaseModel):
     def encrypt_encrypted_fields(cls, item):
         logging.info(f"encrypt_encrypted_fields: {item}")
         logging.info(f"encrypt_encrypted_fields type: {type(item)}")
-        if type(item) in [EncryptedStr]:
+        if isinstance(item, EncryptedStr):
             return item.encrypt(config['encryption_config']['public_key'])
 
-        if type(item) in [list]:
+        if isinstance(item, list):
             return [cls.encrypt_encrypted_fields(i) for i in item]
 
-        if type(item) in [dict]:
+        if isinstance(item, dict):
             for key in item.keys():
                 if isinstance(item[key], list):
                     item[key] = [cls.encrypt_encrypted_fields(i) for i in item[key]]
-                if isinstance(item[key], dict):
+                else:
                     item[key] = cls.encrypt_encrypted_fields(item[key])
         return item
 
     @classmethod
     def decrypt_encrypted_fields(cls, item):
-        if type(item) in [EncryptedStr]:
+        if isinstance(item, EncryptedStr):
             return item.decrypt(config['encryption_config']['private_key'])
 
-        if type(item) in [list, dict]:
+        if isinstance(item, list):
+            return [cls.decrypt_encrypted_fields(i) for i in item]
+
+        if isinstance(item, dict):
             for key in item.keys():
                 if isinstance(item[key], list):
                     item[key] = [cls.decrypt_encrypted_fields(i) for i in item[key]]
-                if isinstance(item[key], dict):
+                else:
                     item[key] = cls.decrypt_encrypted_fields(item[key])
         return item
 
