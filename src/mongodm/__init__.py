@@ -305,7 +305,8 @@ class MongoODMBase(MongODMBaseModel):
         return [await cls(**item).after_get_many_hook() for item in items]
 
     def set_attributes(self, **kwargs):
-        del kwargs["id"]
+        if '_id' in kwargs.keys():
+            del kwargs["_id"]
         for key, value in kwargs.items():
             setattr(self, key, value)
 
