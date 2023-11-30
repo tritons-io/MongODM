@@ -1,4 +1,7 @@
 from bson import ObjectId, errors
+import rsa
+
+from mongodm.errors import RSAError
 
 
 class ObjectIdStr(str):
@@ -22,3 +25,24 @@ class ObjectIdStr(str):
         if not isinstance(v, ObjectId):
             return False
         return True
+
+class EncryptedStr(str):
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        return str(v)
+
+    def encrypt(self, public_key):
+        try:
+            return rsa.encrypt(self.encode('utf-8'), public_key)
+        except (AttributeError, rsa.pkcs1.CryptoError):
+            raise RSAError()
+
+    def decrypt(self, private_key):
+        try:
+            return rsa.decrypt(self.encode('utf-8'), private_key).decode('utf-8')
+        except (AttributeError, rsa.pkcs1.CryptoError):
+            raise RSAError()

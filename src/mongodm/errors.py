@@ -1,6 +1,10 @@
 class MongODMException(Exception):
     message: str
 
+    def __init__(self, message=None):
+        if message:
+            self.message = message
+
     def __repr__(self):
         self.__str__()
 
@@ -18,3 +22,7 @@ class InvalidSelection(MongODMException):
 
 class AbstractUsage(MongODMException):
     message = 'Tried to create an instance of an abstract class'
+
+
+class RSAError(MongODMException):
+    message = 'Could not decrypt, check that the private key is set and correct'

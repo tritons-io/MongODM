@@ -10,7 +10,7 @@ import bson.errors
 from bson import ObjectId
 from pydantic import BaseModel, BaseConfig, Field
 
-from mongodm.types import ObjectIdStr
+from mongodm.types import ObjectIdStr, EncryptedStr
 from mongodm.errors import InvalidSelection, NotFound, AbstractUsage
 
 
@@ -20,7 +20,11 @@ logger = logging.getLogger('mongodm')
 config = {
     'database_connection': AsyncIOMotorClient(),
     'database_name': 'database',
-    'soft_delete': False
+    'soft_delete': False,
+    'encryption_config': {
+        'public_key': '',
+        'private_key': ''
+    }
 }
 
 
@@ -29,6 +33,12 @@ def set_config(database_connection: AsyncIOMotorClient, database_name: str, soft
         'database_connection': database_connection,
         'database_name': database_name,
         'soft_delete': soft_delete
+    })
+
+def set_encryption_config(public_key: str, private_key: str):
+    config['encryption_config'].update({
+        'public_key': public_key,
+        'private_key': private_key
     })
 
 
@@ -108,6 +118,32 @@ class MongoODMBase(MongODMBaseModel):
         return item
 
     @classmethod
+    def encrypt_encrypted_fields(cls, item):
+        if type(item) in [EncryptedStr]:
+            return item.encrypt(config['encryption_config']['public_key'])
+
+        if type(item) in [list, dict]:
+            for key in item.keys():
+                if isinstance(item[key], list):
+                    item[key] = [cls.encrypt_encrypted_fields(i) for i in item[key]]
+                if isinstance(item[key], dict):
+                    item[key] = cls.encrypt_encrypted_fields(item[key])
+        return item
+
+    @classmethod
+    def decrypt_encrypted_fields(cls, item):
+        if type(item) in [EncryptedStr]:
+            return item.decrypt(config['encryption_config']['private_key'])
+
+        if type(item) in [list, dict]:
+            for key in item.keys():
+                if isinstance(item[key], list):
+                    item[key] = [cls.decrypt_encrypted_fields(i) for i in item[key]]
+                if isinstance(item[key], dict):
+                    item[key] = cls.decrypt_encrypted_fields(item[key])
+        return item
+
+    @classmethod
     def _get_fetch_filter(cls, selector):
         if not cls.__soft_delete__:
             selector["deleted_at"] = None
@@ -119,9 +155,10 @@ class MongoODMBase(MongODMBaseModel):
             to_exclude.add("created_at")
         if exclude:
             to_exclude = to_exclude.union(self.__protected_attributes__)
-        return self.replace_str_with_object_id(
-            self.dict(by_alias=True, exclude=to_exclude, exclude_none=exclude_none, exclude_unset=exclude_unset)
-        )
+        dump = self.model_dump(by_alias=True, exclude=to_exclude, exclude_none=exclude_none, exclude_unset=exclude_unset)
+        dump = self.encrypt_encrypted_fields(dump)
+        dump = self.replace_str_with_object_id(dump)
+        return dump
 
     async def before_create(self):
         """ Before create hook """
@@ -164,6 +201,7 @@ class MongoODMBase(MongODMBaseModel):
             raise InvalidSelection
         if item:
             e = cls(**item)
+            e.decrypt()
             await e.after_find()
             return e
         raise NotFound
@@ -184,6 +222,7 @@ class MongoODMBase(MongODMBaseModel):
             raise InvalidSelection
         if item:
             e = cls(**item)
+            e.decrypt()
             await e.after_find()
             return e
         raise NotFound
@@ -204,11 +243,18 @@ class MongoODMBase(MongODMBaseModel):
             raise InvalidSelection
         if item:
             e = cls(**item)
+            e.decrypt()
             await e.after_find()
             return e
         raise NotFound
 
+    def decrypt(self):
+        dump = self.model_dump(by_alias=True)
+        dump = self.decrypt_encrypted_fields(dump)
+        self.set_attributes(**dump)
+
     async def after_get_many_hook(self):
+        self.decrypt()
         await self.after_find()
         return self
 

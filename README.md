@@ -85,6 +85,23 @@ class Entity(MyBase):
 ```
 
 
+## Encrypted fields
+It is possible to encrypt string fields in the database by using the `EncryptedStr` class. It uses rsa to encrypt the data and store it in the database as a string.
+MongODM will automatically decrypt the data when it is retrieved from the database.
+You will need to configure the encryption by using `set_encryption_config()`.
+
+This approach is very opinionated, and is proposed as an alternative if you don't want to use the MongoDB encryption features.
+
+```python
+import mongodm
+
+mongodm.set_encryption_config(
+    public_key='YOUR_RSA_PUBLIC_KEY_VALUE',
+    private_key='YOUR_RSA_PRIVATE_KEY_VALUE'
+)
+```
+
+
 ## Hooks
 You can use hooks to execute code before or after a variety of events. The following hooks are available:
 
