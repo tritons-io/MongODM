@@ -25,4 +25,4 @@ class AbstractUsage(MongODMException):
 
 
 class RSAError(MongODMException):
-    message = 'Could not decrypt, check that the private key is set and correct'
+    message = 'Could not init encryption system, check that the private key is set and correct'
