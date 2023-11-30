@@ -54,7 +54,6 @@ class EncryptedStr(str):
 
 def decrypt(data: bytes, private_key):
     try:
-        logging.info(f"Decrypting: {data}")
         return rsa.decrypt(data, private_key).decode('utf-8')
     except (AttributeError, rsa.pkcs1.CryptoError) as e:
         logging.error(e)

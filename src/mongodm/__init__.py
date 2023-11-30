@@ -123,8 +123,6 @@ class MongoODMBase(MongODMBaseModel):
 
     @classmethod
     def encrypt_encrypted_fields(cls, item):
-        logging.info(f"encrypt_encrypted_fields: {item}")
-        logging.info(f"encrypt_encrypted_fields type: {type(item)}")
         if isinstance(item, EncryptedStr):
             return item.encrypt(config['encryption_config']['public_key'])
 
@@ -307,10 +305,8 @@ class MongoODMBase(MongODMBaseModel):
         return [await cls(**item).after_get_many_hook() for item in items]
 
     def set_attributes(self, **kwargs):
-        logging.info(f"set_attributes: {kwargs}")
-        logging.info(f"set_attributes object: {self}")
+        del kwargs["id"]
         for key, value in kwargs.items():
-            logging.info(f"type of {key}: {type(value)}")
             setattr(self, key, value)
 
     async def before_save(self):
