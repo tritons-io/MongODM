@@ -10,7 +10,7 @@ import bson.errors
 from bson import ObjectId
 from pydantic import BaseModel, BaseConfig, Field
 
-from mongodm.types import ObjectIdStr, EncryptedStr
+from mongodm.types import ObjectIdStr, EncryptedStr, decrypt
 from mongodm.errors import InvalidSelection, NotFound, AbstractUsage
 
 
@@ -141,7 +141,7 @@ class MongoODMBase(MongODMBaseModel):
     @classmethod
     def decrypt_encrypted_fields(cls, item):
         if isinstance(item, EncryptedStr):
-            return item.decrypt(config['encryption_config']['private_key'])
+            return decrypt(item, config['encryption_config']['private_key'])
 
         if isinstance(item, list):
             return [cls.decrypt_encrypted_fields(i) for i in item]

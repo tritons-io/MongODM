@@ -39,7 +39,10 @@ class EncryptedStr(str):
 
     @classmethod
     def validate(cls, v):
-        return EncryptedStr(v)
+        if isinstance(v, str):
+            return EncryptedStr(v)
+        if isinstance(v, bytes):
+            return v
 
     def encrypt(self, public_key):
         try:
@@ -49,12 +52,11 @@ class EncryptedStr(str):
             logging.error(traceback.format_exc())
             raise RSAError()
 
-    def decrypt(self, private_key):
-        try:
-            logging.info(f"Decrypting: {self}")
-            logging.info(f"Encoded: {self.encode('utf-8')}")
-            return rsa.decrypt(self.encode('utf-8'), private_key).decode('utf-8')
-        except (AttributeError, rsa.pkcs1.CryptoError) as e:
-            logging.error(e)
-            logging.error(traceback.format_exc())
-            raise RSAError()
+def decrypt(data: bytes, private_key):
+    try:
+        logging.info(f"Decrypting: {data}")
+        return rsa.decrypt(data, private_key).decode('utf-8')
+    except (AttributeError, rsa.pkcs1.CryptoError) as e:
+        logging.error(e)
+        logging.error(traceback.format_exc())
+        raise RSAError()
