@@ -303,6 +303,8 @@ class MongoODMBase(MongODMBaseModel):
         return [await cls(**item).after_get_many_hook() for item in items]
 
     def set_attributes(self, **kwargs):
+        logging.info(f"set_attributes: {kwargs}")
+        logging.info(f"set_attributes object: {self}")
         for key, value in kwargs.items():
             setattr(self, key, value)
 
