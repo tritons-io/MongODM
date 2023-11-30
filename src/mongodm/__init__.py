@@ -1,3 +1,4 @@
+import traceback
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import uuid4
@@ -140,8 +141,11 @@ class MongoODMBase(MongODMBaseModel):
 
     @classmethod
     def decrypt_encrypted_fields(cls, item):
-        if isinstance(item, EncryptedStr):
-            return decrypt(item, config['encryption_config']['private_key'])
+        if isinstance(item, bytes):
+            try:
+                return decrypt(item, config['encryption_config']['private_key'])
+            except Exception as e:
+                return item
 
         if isinstance(item, list):
             return [cls.decrypt_encrypted_fields(i) for i in item]
@@ -306,6 +310,7 @@ class MongoODMBase(MongODMBaseModel):
         logging.info(f"set_attributes: {kwargs}")
         logging.info(f"set_attributes object: {self}")
         for key, value in kwargs.items():
+            logging.info(f"type of {key}: {type(value)}")
             setattr(self, key, value)
 
     async def before_save(self):
