@@ -109,7 +109,10 @@ class MongoODMBase(MongODMBaseModel):
         if type(item) in [bytes, str, ObjectId, ObjectIdStr]:
             return cls.cast_to_object_id(item)
 
-        if type(item) in [list, dict]:
+        if type(item) in [list]:
+            return [cls.replace_str_with_object_id(i) for i in item]
+
+        if type(item) in [dict]:
             for key in item.keys():
                 if isinstance(item[key], list):
                     item[key] = [cls.replace_str_with_object_id(i) for i in item[key]]
@@ -119,10 +122,15 @@ class MongoODMBase(MongODMBaseModel):
 
     @classmethod
     def encrypt_encrypted_fields(cls, item):
+        logging.info(f"encrypt_encrypted_fields: {item}")
+        logging.info(f"encrypt_encrypted_fields type: {type(item)}")
         if type(item) in [EncryptedStr]:
             return item.encrypt(config['encryption_config']['public_key'])
 
-        if type(item) in [list, dict]:
+        if type(item) in [list]:
+            return [cls.encrypt_encrypted_fields(i) for i in item]
+
+        if type(item) in [dict]:
             for key in item.keys():
                 if isinstance(item[key], list):
                     item[key] = [cls.encrypt_encrypted_fields(i) for i in item[key]]
