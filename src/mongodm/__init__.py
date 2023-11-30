@@ -155,7 +155,7 @@ class MongoODMBase(MongODMBaseModel):
             to_exclude.add("created_at")
         if exclude:
             to_exclude = to_exclude.union(self.__protected_attributes__)
-        dump = self.model_dump(by_alias=True, exclude=to_exclude, exclude_none=exclude_none, exclude_unset=exclude_unset)
+        dump = self.dict(by_alias=True, exclude=to_exclude, exclude_none=exclude_none, exclude_unset=exclude_unset)
         dump = self.encrypt_encrypted_fields(dump)
         dump = self.replace_str_with_object_id(dump)
         return dump
@@ -249,7 +249,7 @@ class MongoODMBase(MongODMBaseModel):
         raise NotFound
 
     def decrypt(self):
-        dump = self.model_dump(by_alias=True)
+        dump = self.dict(by_alias=True)
         dump = self.decrypt_encrypted_fields(dump)
         self.set_attributes(**dump)
 
