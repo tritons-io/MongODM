@@ -212,7 +212,7 @@ class MongoODMBase(MongODMBaseModel):
         except bson.errors.InvalidId:
             raise InvalidSelection
         if item:
-            item = cls.decrypt(item)
+            item = cls.decrypt_encrypted_fields(item)
             e = cls(**item)
             await e.after_find()
             return e
@@ -233,7 +233,7 @@ class MongoODMBase(MongODMBaseModel):
         except bson.errors.InvalidId:
             raise InvalidSelection
         if item:
-            item = cls.decrypt(item)
+            item = cls.decrypt_encrypted_fields(item)
             e = cls(**item)
             await e.after_find()
             return e
@@ -254,15 +254,11 @@ class MongoODMBase(MongODMBaseModel):
         except bson.errors.InvalidId:
             raise InvalidSelection
         if item:
-            item = cls.decrypt(item)
+            item = cls.decrypt_encrypted_fields(item)
             e = cls(**item)
             await e.after_find()
             return e
         raise NotFound
-
-    @classmethod
-    def decrypt(cls, item):
-        return item.decrypt_encrypted_fields(item)
 
     async def after_get_many_hook(self):
         await self.after_find()
@@ -299,7 +295,7 @@ class MongoODMBase(MongODMBaseModel):
             .limit(per_page)\
             .to_list(length=None)
 
-        return [await cls(**cls.decrypt(item)).after_get_many_hook() for item in items]
+        return [await cls(**cls.decrypt_encrypted_fields(item)).after_get_many_hook() for item in items]
 
     async def before_save(self):
         """ Before save hook """
