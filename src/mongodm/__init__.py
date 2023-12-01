@@ -79,7 +79,6 @@ class MongoODMBase(MongODMBaseModel):
     >>> await db_items[0].delete()
     >>>
     >>> update_dict = {'title': 'edited','description': 'edited'}
-    >>> item.set_attributes(**update_dict)  # To change multiples attributes simultaneously, pydantic constructor style
     """
 
     id: Optional[str] = Field(alias="_id")
@@ -213,8 +212,8 @@ class MongoODMBase(MongODMBaseModel):
         except bson.errors.InvalidId:
             raise InvalidSelection
         if item:
+            item = cls.decrypt(item)
             e = cls(**item)
-            e.decrypt()
             await e.after_find()
             return e
         raise NotFound
@@ -234,8 +233,8 @@ class MongoODMBase(MongODMBaseModel):
         except bson.errors.InvalidId:
             raise InvalidSelection
         if item:
+            item = cls.decrypt(item)
             e = cls(**item)
-            e.decrypt()
             await e.after_find()
             return e
         raise NotFound
@@ -255,19 +254,17 @@ class MongoODMBase(MongODMBaseModel):
         except bson.errors.InvalidId:
             raise InvalidSelection
         if item:
+            item = cls.decrypt(item)
             e = cls(**item)
-            e.decrypt()
             await e.after_find()
             return e
         raise NotFound
 
-    def decrypt(self):
-        dump = self.dict(by_alias=True)
-        dump = self.decrypt_encrypted_fields(dump)
-        self.set_attributes(**dump)
+    @classmethod
+    def decrypt(cls, item):
+        return item.decrypt_encrypted_fields(item)
 
     async def after_get_many_hook(self):
-        self.decrypt()
         await self.after_find()
         return self
 
@@ -302,13 +299,7 @@ class MongoODMBase(MongODMBaseModel):
             .limit(per_page)\
             .to_list(length=None)
 
-        return [await cls(**item).after_get_many_hook() for item in items]
-
-    def set_attributes(self, **kwargs):
-        if '_id' in kwargs.keys():
-            del kwargs["_id"]
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+        return [await cls(**cls.decrypt(item)).after_get_many_hook() for item in items]
 
     async def before_save(self):
         """ Before save hook """
