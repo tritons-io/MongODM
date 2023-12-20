@@ -156,7 +156,7 @@ class MongoODMBase(MongODMBaseModel):
 
     @classmethod
     def _get_fetch_filter(cls, selector):
-        if not config["soft_delete"]:
+        if config["soft_delete"]:
             selector["deleted_at"] = None
         return selector
 
