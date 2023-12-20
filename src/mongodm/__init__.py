@@ -86,7 +86,6 @@ class MongoODMBase(MongODMBaseModel):
     updated_at: Optional[datetime] = None
     deleted_at: Optional[datetime] = None
 
-    __soft_delete__ = config["soft_delete"]
     __protected_attributes__: set = set()
     __id_marshaller__ = str
     __id_constructor__ = uuid4
@@ -157,7 +156,7 @@ class MongoODMBase(MongODMBaseModel):
 
     @classmethod
     def _get_fetch_filter(cls, selector):
-        if not cls.__soft_delete__:
+        if not config["soft_delete"]:
             selector["deleted_at"] = None
         return selector
 
@@ -338,7 +337,7 @@ class MongoODMBase(MongODMBaseModel):
 
     async def delete(self):
         await self.before_delete()
-        if self.__soft_delete__:
+        if config["soft_delete"]:
             await self._soft_delete()
         else:
             await self._hard_delete()
