@@ -39,6 +39,9 @@ await db_items[0].delete()
 # To change multiples attributes simultaneously, pydantic constructor style
 new_attributes_dict = {'title': 'edited', 'description': 'edited'}
 item.set_attributes(**new_attributes_dict)  
+
+# You can also use the collection getter directly to send a raw query to the database
+random_item = await Entity.get_collection().aggregate([{'$sample': {'size': 1}}]).to_list(1)[0]
 ```
 
 

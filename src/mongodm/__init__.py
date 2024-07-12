@@ -97,6 +97,11 @@ class MongoODMBase(MongODMBaseModel):
     def __collection_name__(self):
         raise AbstractUsage("You must define a collection name for your model")
 
+    @classmethod
+    def get_collection(cls):
+        return config['database_connection'][config['database_name']][cls.__collection_name__]
+
+
     @staticmethod
     def cast_to_object_id(value):
         if ObjectIdStr.is_object_id(value):
@@ -179,7 +184,7 @@ class MongoODMBase(MongODMBaseModel):
         await self.before_create()
         self.id = self.__id_factory__()
         await self.before_save()
-        await config['database_connection'][config['database_name']][self.__collection_name__].insert_one(
+        await self.get_collection().insert_one(
             self._get_dict_with_oid(creation=True)
         )
         await self.after_save()
@@ -204,7 +209,7 @@ class MongoODMBase(MongODMBaseModel):
         projection: dict = None
     ):  # -> Self
         try:
-            item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(
+            item = await cls.get_collection().find_one(
                 cls._get_fetch_filter({"_id": item_id}),
                 projection=projection
             )
@@ -225,7 +230,7 @@ class MongoODMBase(MongODMBaseModel):
     ):  # -> Self
         fields = cls.replace_str_with_object_id(kwargs)
         try:
-            item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(
+            item = await cls.get_collection().find_one(
                 cls._get_fetch_filter(fields),
                 projection=projection
             )
@@ -246,7 +251,7 @@ class MongoODMBase(MongODMBaseModel):
     ):  # -> Self
         mongo_selector = cls.replace_str_with_object_id(selector)
         try:
-            item = await config['database_connection'][config['database_name']][cls.__collection_name__].find_one(
+            item = await cls.get_collection().find_one(
                 cls._get_fetch_filter(mongo_selector),
                 projection=projection
             )
@@ -268,7 +273,7 @@ class MongoODMBase(MongODMBaseModel):
         if selector is None:
             selector = kwargs
         mongo_selector = cls.replace_str_with_object_id(selector)
-        return await config['database_connection'][config['database_name']][cls.__collection_name__].count_documents(
+        return await cls.get_collection().count_documents(
             cls._get_fetch_filter(mongo_selector)
         )
 
@@ -287,7 +292,7 @@ class MongoODMBase(MongODMBaseModel):
         if sort is None:
             sort = [("created_at", pymongo.DESCENDING)]
         selector = cls.replace_str_with_object_id(selector)
-        items = await config['database_connection'][config['database_name']][cls.__collection_name__]\
+        items = await cls.get_collection()\
             .find(cls._get_fetch_filter(selector), projection=projection)\
             .sort(sort)\
             .skip((page - 1) * per_page)\
@@ -314,7 +319,7 @@ class MongoODMBase(MongODMBaseModel):
         self.updated_at = payload['updated_at'] = update_timestamp
         if not create:
             payload = await self.before_update(payload)
-        await config['database_connection'][config['database_name']][self.__collection_name__].update_one(
+        await self.get_collection().update_one(
             self.__class__._get_fetch_filter({"_id": self.__id_marshaller__(self.id)}),
             {"$set": payload},
         )
@@ -348,7 +353,7 @@ class MongoODMBase(MongODMBaseModel):
         pass
 
     async def _soft_delete(self):
-        await config['database_connection'][config['database_name']][self.__collection_name__].update_one(
+        await self.get_collection().update_one(
             self.__class__._get_fetch_filter({"_id": self.__id_marshaller__(self.id)}),
             {"$set": {"deleted_at": datetime.now()}},
         )
@@ -359,7 +364,7 @@ class MongoODMBase(MongODMBaseModel):
         pass
 
     async def _hard_delete(self):
-        await config['database_connection'][config['database_name']][self.__collection_name__].delete_one(
+        await self.get_collection().delete_one(
             {"_id": self.__id_marshaller__(self.id)}
         )
         await self.after_hard_delete()
