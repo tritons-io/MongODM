@@ -4,7 +4,7 @@ stages:
 - package
 
 🛠 Build:
-  image: bitnami/python:3.10
+  image: bitnami/python:3.12
   stage: build
   variables:
     VERSION: $CI_COMMIT_REF_NAME
@@ -37,7 +37,7 @@ sonarqube-check:
 
 
 📦 Package:
-  image: bitnami/python:3.10
+  image: bitnami/python:3.12
   stage: package
   before_script:
   - pip install twine
@@ -48,7 +48,7 @@ sonarqube-check:
 
 
 📦 Package private:
-  image: bitnami/python:3.10
+  image: bitnami/python:3.12
   stage: package
   before_script:
   - pip install twine
