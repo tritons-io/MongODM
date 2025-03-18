@@ -110,7 +110,7 @@ class MongoODMBase(MongODMBaseModel):
 
     @classmethod
     def replace_str_with_object_id(cls, item):
-        if type(item) in [bytes, str, ObjectId, ObjectIdStr]:
+        if type(item) in [ObjectIdStr]:
             return cls.cast_to_object_id(item)
 
         if type(item) in [list]:
